@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Caja - Boneles y Alitas Alexis</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f2f4f7;color:#111}
+header{background:#111;color:#fff;padding:18px;text-align:center;font-size:22px;font-weight:800}
+.wrap{max-width:1000px;margin:auto;padding:14px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+.card{background:#fff;border-radius:16px;padding:14px;box-shadow:0 2px 10px #0001}
+h2{margin:5px 0 12px}.products{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+button{border:0;border-radius:12px;padding:14px;cursor:pointer;font-weight:700;font-size:15px}
+.product{background:#e9eef5;min-height:80px}.product b{display:block;font-size:17px;margin-bottom:6px}
+.product span{font-size:16px}.danger{background:#ffdddd}.pay{background:#111;color:#fff;width:100%;margin-top:8px;font-size:18px}
+select,input{width:100%;padding:12px;border:1px solid #ccd3dc;border-radius:10px;font-size:16px;margin:5px 0 10px}
+.cartrow{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #eee;padding:9px 0}
+.qty button{padding:5px 9px;background:#eee}.total{font-size:28px;font-weight:900;margin:14px 0}
+.small{color:#666;font-size:13px}.success{background:#d9f7df;padding:12px;border-radius:10px;margin-top:10px;display:none}
+
+.optionModal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
+.optionBox{background:#fff;border-radius:18px;padding:18px;width:min(520px,100%);max-height:92vh;overflow:auto}
+.optionBox h2{margin-top:0}.optionGroup{margin:14px 0}.optionGroup label{display:block;background:#f0f3f7;padding:12px;border-radius:10px;margin:6px 0;cursor:pointer}.optionGroup input{width:auto;margin-right:8px}.optionActions{display:flex;gap:8px}.optionActions button{flex:1}.confirm{background:#1f4e78;color:#fff}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.products{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>🍗 BONELES Y ALITAS ALEXIS — CAJA</header>
+<div class="wrap">
+<div class="grid">
+<section class="card">
+<h2>🍗 MENÚ ALEXIS</h2>
+<div id="categories" class="products"></div>
+<h2 id="categoryTitle" style="margin-top:18px">Selecciona una categoría</h2>
+<div id="products" class="products"></div>
+<div id="optionsNote" class="small" style="margin-top:10px">En Boneless y Alitas puedes elegir papas, sazonado y salsa. En Platillos al natural solo eliges papas y sazonado.</div>
+</section>
+<section class="card">
+<h2>🧾 Ticket</h2>
+<div id="cart"><div class="small">Agrega productos para comenzar.</div></div>
+<div class="total">TOTAL: $<span id="total">0.00</span></div>
+<label>Tipo de pedido</label>
+<select id="type">
+<option>Mostrador</option>
+<option>Recoger</option>
+<option>Servicio a domicilio — GRATIS</option>
+<option>Servicio a domicilio — $20 envío</option>
+<option>DiDi Food</option>
+<option>Uber Eats</option>
+<option>Rappi</option>
+</select>
+<label>Método de pago</label>
+<select id="payment"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>DiDi Food</option><option>Uber Eats</option><option>Rappi</option></select>
+<label>Cliente paga</label>
+<input id="paid" type="number" inputmode="decimal" placeholder="0.00" oninput="calcChange()">
+<div><b>CAMBIO: $<span id="change">0.00</span></b></div>
+<button class="pay" onclick="finish()">ENVIAR A CAJERA</button>
+<button onclick="sendWhatsApp()" style="width:100%;margin-top:8px;background:#25D366;color:#fff;font-size:18px">
+📲 ENVIAR A COCINA
+</button>
+<div id="success" class="success"></div>
+<button class="danger" onclick="clearCart()" style="width:100%;margin-top:8px">Cancelar pedido</button>
+</section>
+</div>
+<section class="card" style="margin-top:14px">
+<button onclick="toggleMenu()" style="width:100%;background:#2f6f3e;color:#fff;font-size:19px">
+⚙️ MENÚ / PRECIOS — AGREGAR PRODUCTOS
+</button>
+<div id="menuPanel" style="display:none;margin-top:12px">
+<div class="small">Cambia precios, agrega productos y escribe su receta de cocina. Se guardan en este dispositivo.</div>
+<div id="menuEditor" style="margin-top:10px"></div><div class="small" style="margin-top:8px">💡 En cada producto puedes escribir su receta. Esa receta aparecerá automáticamente en la comanda del cocinero por WhatsApp.</div>
+<button onclick="addProduct()" style="width:100%;background:#e9eef5;margin-top:10px">➕ AGREGAR PRODUCTO</button>
+<button onclick="saveMenu()" style="width:100%;background:#2f6f3e;color:#fff;margin-top:8px">💾 GUARDAR MENÚ</button>
+</div>
+</section>
+
+<section class="card" style="margin-top:14px">
+<button onclick="toggleSummary()" style="width:100%;background:#1F4E78;color:#fff;font-size:19px">
+📊 VENTAS DE HOY — TOCAR PARA VER DETALLE
+</button>
+<div id="summaryPanel" style="display:none;margin-top:12px">
+<div id="summary" style="font-size:18px;font-weight:700"></div>
+<div id="detail" style="margin-top:12px"></div>
+<button onclick="newDay()" style="width:100%;margin-top:14px;background:#b00020;color:#fff;font-size:17px">
+🗑️ CERRAR DÍA / EMPEZAR DE NUEVO
+</button>
+</div>
+</section>
+</div>
+<script>
+
+let products = JSON.parse(localStorage.getItem("alexis_products_v5") || JSON.stringify({"Boneless": [["Boneles Uyuyuy", 130], ["Boneles al Bribón", 200], ["Boneles Naturales", 120]], "Alitas": [["El Popio", 160], ["El Comesolo", 280], ["Alitas al Natural", 100], ["Alitas Las Maravillas", 145], ["El Pecadito", 160]], "Papas y Antojitos": [["PepelLepu", 60], ["Sabrosanas", 95], ["Megas Alexis", 135], ["Don Temo", 100], ["Salchipapas Alexis", 95]], "Platillos": [["Altoro Fuego Aderezado", 180], ["Altoro Fuego Chico", 150], ["Las Adornadas", 120]], "Hamburguesas": [], "Hotdogs": [], "Bebidas": []}));
+let cart = [];
+let sales = JSON.parse(localStorage.getItem("alexis_sales") || "[]");
+let currentCategory = "";
+
+function money(n){ return Number(n).toFixed(2); }
+
+function renderCategories(){
+  const el=document.getElementById("categories");
+  el.innerHTML="";
+  Object.keys(products).forEach(cat=>{
+    const b=document.createElement("button");
+    b.className="product";
+    b.innerHTML="<b>📂 "+cat+"</b><span>"+products[cat].length+" productos</span>";
+    b.onclick=function(){ showCategory(cat); };
+    el.appendChild(b);
+  });
+}
+
+let pendingProduct=null;
+
+function showCategory(cat){
+  currentCategory=cat;
+  document.getElementById("categoryTitle").textContent="📂 "+cat;
+  const el=document.getElementById("products");
+  el.innerHTML="";
+  if(cat==="Boneless"){
+    const natural=document.createElement("button");
+    natural.className="product";
+    natural.style.background="#e8f5e9";
+    natural.innerHTML="<b>🍗 BONELESS NATURALES</b><span>Escoge papas y sazonado</span>";
+    natural.onclick=function(){
+      const naturalIndex=products[cat].findIndex(p=>/natural|naturales/i.test(String(p[0])));
+      if(naturalIndex>=0 && products[cat][naturalIndex][1]>0) openOptions(cat,naturalIndex);
+    };
+    el.appendChild(natural);
+  }
+  if(cat==="Alitas"){
+    const natural=document.createElement("button");
+    natural.className="product";
+    natural.style.background="#e8f5e9";
+    natural.innerHTML="<b>🍗 ALITAS NATURALES</b><span>Escoge papas y sazonador — SIN SALSA</span>";
+    natural.onclick=function(){
+      const naturalIndex=products[cat].findIndex(p=>/natural|naturales/i.test(String(p[0])));
+      if(naturalIndex>=0 && products[cat][naturalIndex][1]>0) openOptions(cat,naturalIndex);
+    };
+    el.appendChild(natural);
+  }
+  products[cat].forEach((p,i)=>{
+    const b=document.createElement("button");
+    b.className="product";
+    b.innerHTML="<b>"+p[0]+"</b><span>"+(p[1]>0?"$"+money(p[1]):"PRECIO POR DEFINIR")+"</span>";
+    b.onclick=function(){
+      if(!p[1]){alert("Primero asigna un precio a este producto.");return;}
+      // Para boneless, alitas y platillos se muestran las opciones.
+      if(["Boneless","Alitas"].includes(cat)){
+        openOptions(cat,i);
+      } else if(cat==="Platillos"){
+        openOptions(cat,i);
+      } else {
+        addToCart(cat,i,"");
+      }
+    };
+    el.appendChild(b);
+  });
+}
+
+function openOptions(cat,i){
+  pendingProduct={cat:cat,i:i};
+  const p=products[cat][i];
+  const isNatural = (cat==="Boneless" || cat==="Alitas") && /natural|naturales/i.test(String(p[0]));
+  const isPlatillo = cat==="Platillos";
+
+  document.getElementById("optionTitle").textContent="Personalizar: "+p[0];
+  const el=document.getElementById("optionContent");
+
+  el.innerHTML=`
+    <div class="optionGroup">
+      <b>🍟 Escoge tus papas</b>
+      <label><input type="radio" name="friesType" value="A la francesa" checked> A la francesa</label>
+      <label><input type="radio" name="friesType" value="Gajo"> Gajo</label>
+    </div>
+
+    <div class="optionGroup">
+      <b>🍗 Escoge el sazonador para tus papas</b>
+      <label><input type="radio" name="fries" value="Sin sal" checked> Sin sal</label>
+      <label><input type="radio" name="fries" value="Con sal"> Con sal</label>
+      <label><input type="radio" name="fries" value="Polvo de chile de árbol"> Polvo de chile de árbol</label>
+      <label><input type="radio" name="fries" value="Cajun delicioso"> Cajun delicioso</label>
+      <label><input type="radio" name="fries" value="Lemon pepper"> Lemon pepper</label>
+    </div>
+
+    ${isNatural || isPlatillo ? "" : `<div class="optionGroup">
+      <b>🌶️ Salsa a escoger</b>
+      <label><input type="radio" name="sauce" value="BBQ" checked> BBQ</label>
+      <label><input type="radio" name="sauce" value="BBQ HOT"> BBQ HOT</label>
+      <label><input type="radio" name="sauce" value="HOT"> HOT</label>
+      <label><input type="radio" name="sauce" value="LEMON PEPPER"> LEMON PEPPER</label>
+      <label><input type="radio" name="sauce" value="TERIYAKI"> TERIYAKI (+$10)</label>
+      <label><input type="radio" name="sauce" value="MANGO HABANERO"> MANGO HABANERO</label>
+      <label><input type="radio" name="sauce" value="NATURALES"> NATURALES</label>
+    </div>`}`;
+
+  document.getElementById("optionModal").style.display="flex";
+}
+
+function closeOptions(){
+  document.getElementById("optionModal").style.display="none";
+  pendingProduct=null;
+}
+function addCustomized(){
+  if(!pendingProduct)return;
+  const friesType=document.querySelector('input[name="friesType"]:checked').value;
+  const fries=document.querySelector('input[name="fries"]:checked').value;
+  const sauceEl=document.querySelector('input[name="sauce"]:checked');
+  const sauce=sauceEl ? sauceEl.value : "";
+  const extra=sauce==="TERIYAKI"?10:0;
+  const prod=pendingProduct ? products[pendingProduct.cat][pendingProduct.i] : null;
+  const isNatural = pendingProduct && (pendingProduct.cat==="Platillos" || ((pendingProduct.cat==="Boneless" || pendingProduct.cat==="Alitas") && /natural|naturales/i.test(String(prod[0]))));
+  const options=isNatural
+    ? "AL NATURAL | "+friesType+" | "+fries
+    : friesType+" | "+fries+" | "+sauce;
+  addToCart(pendingProduct.cat,pendingProduct.i,options,extra);
+  closeOptions();
+}
+function addToCart(cat,i,options,extra=0){
+  const p=products[cat][i];
+  const key=cat+"|"+i+"|"+options+"|"+extra;
+  const item=cart.find(x=>x.key===key);
+  if(item)item.q++;
+  else cart.push({key:key,cat:cat,i:i,q:1,options:options,extra:extra});
+  renderCart();
+}
+
+function renderCart(){
+  const el=document.getElementById("cart");
+  el.innerHTML="";
+  if(!cart.length){
+    el.innerHTML='<div class="small">Agrega productos para comenzar.</div>';
+  }
+  cart.forEach(x=>{
+    const p=products[x.cat][x.i];
+    const unit=p[1]+(x.extra||0);
+    const r=document.createElement("div");
+    r.className="cartrow";
+    r.innerHTML="<div><b>"+p[0]+"</b><br><span class='small'>"+x.cat+" · $"+money(unit)+" c/u"+
+      (x.options?"<br>📝 "+x.options:"")+
+      "</span></div><div class='qty'><button onclick='minusItem(\""+x.key+"\")'>−</button> "+x.q+
+      " <button onclick='plusItem(\""+x.key+"\")'>+</button></div><b>$"+money(unit*x.q)+"</b>";
+    el.appendChild(r);
+  });
+  updateTotal();
+}
+
+function plusItem(key){
+  const x=cart.find(a=>a.key===key);
+  if(x)x.q++;
+  renderCart();
+}
+function minusItem(key){
+  const x=cart.find(a=>a.key===key);
+  if(x)x.q--;
+  if(x && x.q<=0)cart=cart.filter(a=>a.key!==key);
+  renderCart();
+}
+function updateTotal(){
+  const t=cart.reduce((s,x)=>s+(products[x.cat][x.i][1]+(x.extra||0))*x.q,0);
+  document.getElementById("total").textContent=money(t);
+  calcChange();
+}
+function calcChange(){
+  const t=Number(document.getElementById("total").textContent)||0;
+  const p=Number(document.getElementById("paid").value)||0;
+  document.getElementById("change").textContent=money(Math.max(p-t,0));
+}
+
+function toggleMenu(){
+  const p=document.getElementById("menuPanel");
+  p.style.display=(p.style.display==="none" || !p.style.display)?"block":"none";
+  if(p.style.display==="block")renderMenuEditor();
+}
+
+function renderMenuEditor(){
+  const el=document.getElementById("menuEditor");
+  el.innerHTML="";
+  Object.keys(products).forEach(cat=>{
+    const title=document.createElement("h3");
+    title.textContent="📂 "+cat;
+    el.appendChild(title);
+    products[cat].forEach((p,i)=>{
+      const row=document.createElement("div");
+      row.style="display:grid;grid-template-columns:1fr 110px 42px;gap:6px;margin-bottom:4px";
+      const name=document.createElement("input");
+      name.value=p[0]; name.id="name_"+encodeURIComponent(cat)+"_"+i;
+      const price=document.createElement("input");
+      price.type="number"; price.min="0"; price.step="0.01"; price.value=p[1];
+      price.id="price_"+encodeURIComponent(cat)+"_"+i;
+      const del=document.createElement("button");
+      del.textContent="✕"; del.style.background="#ffdddd";
+      del.onclick=function(){removeProduct(cat,i)};
+      row.appendChild(name); row.appendChild(price); row.appendChild(del);
+      el.appendChild(row);
+      const recipe=document.createElement("textarea");
+      recipe.placeholder="Receta / preparación para cocina (ingredientes, gramos y pasos)";
+      recipe.value=p[2]||"";
+      recipe.id="recipe_"+encodeURIComponent(cat)+"_"+i;
+      recipe.style="width:100%;min-height:70px;margin:0 0 10px;padding:10px;border:1px solid #ccd3dc;border-radius:10px;font-size:15px;resize:vertical";
+      el.appendChild(recipe);
+    });
+    const add=document.createElement("button");
+    add.textContent="➕ Agregar producto a "+cat;
+    add.style="width:100%;margin-bottom:12px;background:#e9eef5";
+    add.onclick=function(){products[cat].push(["Nuevo producto",0]);renderMenuEditor();};
+    el.appendChild(add);
+  });
+  const addCat=document.createElement("button");
+  addCat.textContent="➕ AGREGAR NUEVA SECCIÓN";
+  addCat.style="width:100%;background:#d9eaf7";
+  addCat.onclick=addCategory;
+  el.appendChild(addCat);
+}
+
+function addCategory(){
+  const name=prompt("Escribe el nombre de la nueva sección:");
+  if(!name)return;
+  const cat=name.trim();
+  if(!cat || products[cat]){alert("Esa categoría ya existe.");return;}
+  products[cat]=[];
+  renderCategories();
+  renderMenuEditor();
+}
+
+function removeProduct(cat,i){
+  if(confirm("¿Eliminar "+products[cat][i][0]+"?")){
+    products[cat].splice(i,1);
+    renderMenuEditor();
+    renderCategories();
+    if(currentCategory===cat)showCategory(cat);
+  }
+}
+
+function saveMenu(){
+  Object.keys(products).forEach(cat=>{
+    products[cat]=products[cat].map((p,i)=>{
+      const id=encodeURIComponent(cat);
+      const name=document.getElementById("name_"+id+"_"+i).value.trim() || "Nuevo producto";
+      const price=Number(document.getElementById("price_"+id+"_"+i).value)||0;
+      const recipeEl=document.getElementById("recipe_"+id+"_"+i);
+      const recipe=recipeEl ? recipeEl.value.trim() : (p[2]||"");
+      return [name,price,recipe];
+    });
+  });
+  localStorage.setItem("alexis_products_v5",JSON.stringify(products));
+  renderCategories();
+  if(currentCategory)showCategory(currentCategory);
+  alert("✅ Menú guardado.");
+}
+
+// Presentaciones/pesos conocidos del menú de Alexis.
+// Si un producto no tiene un peso definido aquí, no se inventa: simplemente no se muestra.
+const productDetails = {
+  "Boneles Uyuyuy": "10 boneless + 200 g de papas",
+  "Boneles Ay Mamita": "200 g de pechuga + 200 g de papas",
+  "El Popio": "700 g de alitas + 200 g de papas",
+  "El Piopio": "700 g de alitas + 200 g de papas",
+  "El Comesolo": "1,400 g de alitas",
+  "Alitas Adobadas JR": "300 g de alitas + 200 g de papas",
+  "Alitas Kikiriki": "220 g de alitas + 200 g de papas",
+  "Altoro Fuego Aderezado": "360 g de pechuga + 400 g de papas",
+  "Altoro Fuego Chico": "150 g de pechuga",
+  "Altoro fuego chico": "150 g de pechuga"
+};
+
+function sendWhatsApp(){
+  // Permite enviar la comanda incluso después de cobrar.
+  const order = cart.length ? {
+    items: cart,
+    type: document.getElementById("type").value,
+    payment: document.getElementById("payment").value
+  } : lastChargedOrder;
+
+  if(!order || !order.items || !order.items.length){
+    alert("Agrega productos antes de enviar la comanda.");
+    return;
+  }
+
+  let msg="🍗 *COMANDA — BONELES Y ALITAS ALEXIS*%0A";
+  msg+="━━━━━━━━━━━━━━━━━━%0A";
+  order.items.forEach((x,n)=>{
+    const p=products[x.cat][x.i];
+    const unit=p[1]+(x.extra||0);
+    msg+="*"+x.q+" x "+p[0]+"* — $"+money(unit*x.q)+"%0A";
+    const detail=productDetails[p[0]];
+    if(detail) msg+="   ⚖️ "+detail+"%0A";
+    if(p[2]) msg+="   👨‍🍳 *RECETA / PREPARACIÓN:*%0A"+encodeURIComponent(p[2]).replace(/%0A/g,"%0A   ")+"%0A";
+    if(x.options){
+      const parts=x.options.split(" | ");
+      if(parts[0]==="AL NATURAL") {
+        msg+="   🍟 Papas: "+parts[1]+"%0A";
+        msg+="   🧂 Sazonador: "+parts[2]+"%0A";
+      } else {
+        if(parts[0]) msg+="   🍟 Papas: "+parts[0]+"%0A";
+        if(parts[1]) msg+="   🧂 Sazonado: "+parts[1]+"%0A";
+        if(parts[2]) msg+="   🌶️ Salsa: "+parts[2]+"%0A";
+      }
+    }
+  });
+  const total=order.items.reduce((s,x)=>s+(products[x.cat][x.i][1]+(x.extra||0))*x.q,0);
+  msg+="━━━━━━━━━━━━━━━━━━%0A";
+  msg+="💰 *TOTAL: $"+money(total)+"*%0A";
+  msg+="📦 Tipo: "+order.type+"%0A";
+  msg+="💳 Pago: "+order.payment;
+  const phone="526672344600";
+  window.open("https://wa.me/"+phone+"?text="+msg,"_blank");
+}
+
+function finish(){
+  if(!cart.length){alert("Agrega productos.");return;}
+  const total=Number(document.getElementById("total").textContent)||0;
+  const paid=Number(document.getElementById("paid").value)||0;
+  const payment=document.getElementById("payment").value;
+  if(payment==="Efectivo" && paid<total){alert("El pago es menor que el total.");return;}
+  // Guardamos una copia de la venta recién cobrada para poder mandar la comanda después.
+  lastChargedOrder={
+    items:JSON.parse(JSON.stringify(cart)),
+    type:document.getElementById("type").value,
+    payment:payment
+  };
+  sales.push({
+    date:new Date().toLocaleString(),
+    total:total,
+    type:document.getElementById("type").value,
+    payment:payment
+  });
+  localStorage.setItem("alexis_sales",JSON.stringify(sales));
+  document.getElementById("success").style.display="block";
+  document.getElementById("success").textContent="✅ Venta registrada — Total $"+money(total)+" — Cambio $"+money(Math.max(paid-total,0));
+  cart=[]; document.getElementById("paid").value="";
+  renderCart(); summary();
+
+  // Después de cobrar, abre WhatsApp de la cajera.
+  const cashierPhone="526676415134";
+  const cashierMsg="💰 *VENTA COBRADA — BONELES Y ALITAS ALEXIS*%0A"+
+                   "Total: $"+money(total)+"%0A"+
+                   "Tipo: "+document.getElementById("type").value+"%0A"+
+                   "Pago: "+payment;
+  window.open("https://wa.me/"+cashierPhone+"?text="+cashierMsg,"_blank");
+}
+function clearCart(){
+  cart=[];
+  lastChargedOrder=null;
+  document.getElementById("paid").value="";
+  document.getElementById("success").style.display="none";renderCart();
+}
+function toggleSummary(){
+  const p=document.getElementById("summaryPanel");
+  p.style.display=(p.style.display==="none" || !p.style.display)?"block":"none";
+  if(p.style.display==="block")summary();
+}
+function summary(){
+  const today=new Date().toLocaleDateString();
+  const a=sales.filter(s=>s.date.startsWith(today));
+  const total=a.reduce((s,x)=>s+x.total,0);
+  const efectivo=a.filter(x=>x.payment==="Efectivo").reduce((s,x)=>s+x.total,0);
+  const transferencia=a.filter(x=>x.payment==="Transferencia").reduce((s,x)=>s+x.total,0);
+  const tarjeta=a.filter(x=>x.payment==="Tarjeta").reduce((s,x)=>s+x.total,0);
+  const plataformas=a.filter(x=>["DiDi Food","Uber Eats","Rappi"].includes(x.payment)).reduce((s,x)=>s+x.total,0);
+  document.getElementById("summary").innerHTML="🧾 Pedidos: "+a.length+"<br>💰 Total vendido: $"+money(total)+"<br>💵 Efectivo: $"+money(efectivo)+"<br>🏦 Transferencias: $"+money(transferencia)+"<br>💳 Tarjetas: $"+money(tarjeta)+"<br>📱 Plataformas: $"+money(plataformas);
+  const d=document.getElementById("detail");
+  d.innerHTML=a.length ? "<h3>Detalle de pedidos</h3>"+a.map((x,i)=>"<div style='padding:10px;border-bottom:1px solid #ddd'><b>Pedido "+(i+1)+"</b> — "+x.date+"<br>Tipo: "+x.type+" | Pago: "+x.payment+"<br><b>Total: $"+money(x.total)+"</b></div>").join("") : '<div class="small">Todavía no hay ventas registradas hoy.</div>';
+}
+function newDay(){
+  const today=new Date().toLocaleDateString();
+  const a=sales.filter(s=>s.date.startsWith(today));
+  const total=a.reduce((s,x)=>s+x.total,0);
+  if(!a.length){alert("No hay ventas registradas hoy.");return;}
+  if(!confirm("Hoy llevas "+a.length+" pedidos y $"+money(total)+" vendidos.\n\n¿Seguro que quieres cerrar el día y empezar de nuevo?"))return;
+
+  // Preparar reporte del día para enviarlo por correo antes de limpiar la caja
+  const cash=a.filter(x=>x.payment==="Efectivo").reduce((s,x)=>s+x.total,0);
+  const transfer=a.filter(x=>x.payment==="Transferencia").reduce((s,x)=>s+x.total,0);
+  const card=a.filter(x=>x.payment==="Tarjeta").reduce((s,x)=>s+x.total,0);
+  const platforms=a.filter(x=>["DiDi Food","Uber Eats","Rappi"].includes(x.payment)).reduce((s,x)=>s+x.total,0);
+  let body="REPORTE DE VENTAS — BONELES Y ALITAS ALEXIS\n";
+  body+="Fecha: "+today+"\n";
+  body+="Pedidos: "+a.length+"\n";
+  body+="TOTAL VENDIDO: $"+money(total)+"\n\n";
+  body+="EFECTIVO: $"+money(cash)+"\n";
+  body+="TRANSFERENCIAS: $"+money(transfer)+"\n";
+  body+="TARJETAS: $"+money(card)+"\n";
+  body+="PLATAFORMAS: $"+money(platforms)+"\n\n";
+  body+="DETALLE DE PEDIDOS\n====================\n";
+  a.forEach((x,i)=>{
+    body+="\nPEDIDO "+(i+1)+" — "+x.date+"\n";
+    body+="Tipo: "+(x.type||"")+"\n";
+    body+="Pago: "+(x.payment||"")+"\n";
+    body+="Total: $"+money(x.total)+"\n";
+    if(x.items){x.items.forEach(it=>{ body+="- "+it.qty+" x "+it.name+(it.options?" | "+it.options:"")+"\n"; });}
+  });
+  const subject="Ventas del día "+today+" — Boneles y Alitas Alexis";
+  const mailto="mailto:alexisnoe.perezsanchez@gmail.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  window.location.href=mailto;
+
+  sales=sales.filter(s=>!s.date.startsWith(today));
+  localStorage.setItem("alexis_sales",JSON.stringify(sales));
+  cart=[];document.getElementById("paid").value="";
+  document.getElementById("success").style.display="none";
+  renderCart();summary();
+  alert("✅ Día cerrado. La caja está lista.");
+}
+
+renderCategories();
+renderCart();
+summary();
+
+</script>
+
+<div id="optionModal" class="optionModal">
+  <div class="optionBox">
+    <h2 id="optionTitle">Personalizar pedido</h2>
+    <div id="optionContent"></div>
+    <div class="optionActions">
+      <button onclick="closeOptions()">CANCELAR</button>
+      <button class="confirm" onclick="addCustomized()">AGREGAR AL TICKET</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
